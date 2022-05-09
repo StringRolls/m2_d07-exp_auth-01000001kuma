@@ -3,10 +3,11 @@
 const { Router } = require("express");
 const router = new Router();
 
-const bcryptjs = require("bcryptjs");
-const saltRounds = 10;
+const bcrypt = require("bcrypt");
+const saltRounds = 5;
 
 const User = require("../models/User.model");
+const res = require("express/lib/response");
 
 // GET route ==> to display the signup form to users
 router.get("/signup", (req, res) => res.render("auth/signup"));
@@ -17,7 +18,7 @@ router.post("/signup", (req, res, next) => {
 
   const { username, email, password } = req.body;
 
-  bcryptjs
+  bcrypt
     .genSalt(saltRounds)
     .then((salt) => bcryptjs.hash(password, salt))
     .then((hashedPassword) => {
@@ -33,10 +34,42 @@ router.post("/signup", (req, res, next) => {
     })
     .then((userFromDB) => {
       // console.log("Newly created user is: ", userFromDB);
-      res.redirect("/userProfile");
+      res.redirect("/");
     })
     .catch((error) => next(error));
 });
+
+router
+  .route("/login")
+  .get((req, res) => res.render("auth/login"))
+  .post((req, res) => {
+    const {email, password} = req.body
+
+    User.findOne({email})
+    .then((user)=>{
+      if(!user){
+
+        res.render("auth/login", {errorMessage: "Wrong credentials!"})
+        return
+      
+      } else {
+
+        if(bcrypt.compareSync(password, user.password)){
+
+          req.session.currentUser = user
+          res.redirect("/") // redirect to wherever you want
+          return
+        
+        }else{
+          res.render("auth/login", { errorMessage: "Wrong credentials!"});
+        
+        }
+
+      }
+    })
+    .catch(err=>console.log(err))
+
+  });
 
 router.get("/userProfile", (req, res) => res.render("users/user-profile"));
 
